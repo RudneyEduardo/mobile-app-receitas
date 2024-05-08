@@ -1,19 +1,29 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Alert, Image, Pressable, SafeAreaView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 const logo = require("../../assets/icon.png")
 
 
 export default function LoginScreen({ navigation }) {
   const [click, setClick] = useState(false);
-  const { username, setUsername } = useState("");
-  const { password, setPassword } = useState("");
+  const [ username, setUser ] = useState("");
+  const [ password, setPassword ] = useState("");
+
+ 
+  const checkLogin = (e) => {
+    if (username === "" || password === "") {
+      Alert.alert("Erro de Login", "Senha e/ou Usuário Inválidos")
+    } else {
+      navigation.setOptions({ title: `Bem vindo! ${username}!` })
+      navigation.navigate('Exams', { name: username })
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-
       <Image source={logo} style={styles.image} resizeMode='contain' />
       <Text style={styles.title}>Login</Text>
       <View style={styles.inputView}>
-        <TextInput style={styles.input} placeholder='EMAIL OR USERNAME' value={username} onChangeText={setUsername} autoCorrect={false}
+        <TextInput style={styles.input} placeholder='EMAIL OR USERNAME' value={username} onChangeText={setUser} autoCorrect={false}
           autoCapitalize='none' />
         <TextInput style={styles.input} placeholder='PASSWORD' secureTextEntry value={password} onChangeText={setPassword} autoCorrect={false}
           autoCapitalize='none' />
@@ -21,27 +31,22 @@ export default function LoginScreen({ navigation }) {
       <View style={styles.rememberView}>
         <View style={styles.switch}>
           <Switch value={click} onValueChange={setClick} trackColor={{ true: "green", false: "gray" }} />
-          <Text style={styles.rememberText}>Remember Me</Text>
+          <Text style={styles.rememberText}>Manter Conectado</Text>
         </View>
         <View>
-          <Pressable onPress={() => Alert.alert("Forget Password!")}>
-            <Text style={styles.forgetText}>Forgot Password?</Text>
+          <Pressable onPress={() => Alert.alert("Ainda não implementado!")}>
+            <Text style={styles.forgetText}>Esqueceu a senha ?</Text>
           </Pressable>
         </View>
       </View>
-
       <View style={styles.buttonView}>
         <Pressable style={styles.button} onPress={() => {
-          navigation.setOptions({ title: 'Bem vindo! Test!' })
-          navigation.navigate('Exams', { name: 'test' })
+          checkLogin(username)
         }}>
           <Text style={styles.buttonText}>LOGIN</Text>
         </Pressable>
       </View>
-
-      <Text style={styles.footerText}>Don't Have Account?<Text style={styles.signup}>  Sign Up</Text></Text>
-
-
+      <Text style={styles.footerText}>Primeiro Acesso ?<Text style={styles.signup}>  Criar Conta</Text></Text>
     </SafeAreaView>
   )
 }

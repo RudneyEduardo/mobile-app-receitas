@@ -17,7 +17,7 @@ export default ExamsScreen = (props) => {
     const myListEmpty = () => {
         return (
           <View style={{ alignItems: "center" }}>
-          <Text style={styles.item}>No data found</Text>
+          <Text style={styles.item}>Sem Exames e/ou Receituários</Text>
           </View>
         );
       };
@@ -73,7 +73,8 @@ export default ExamsScreen = (props) => {
                 transparent={false}
                 visible={registerModalVisible}
                 onRequestClose={() => {
-                    Alert.alert('Modal has been closed.');
+                    if(examName === "" || !isPreview) Alert.alert("Exame e/ou Receituário não foi salvo!")
+                    if(examName != "" && isPreview) Alert.alert("Exame e/ou Receituário salvo com sucesso!")
                     setRegisterModalVisible(!registerModalVisible);
                 }}>
                 <ScrollView contentContainerStyle={styles.centeredView}>
