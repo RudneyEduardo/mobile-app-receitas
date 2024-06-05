@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { View, SafeAreaView, Pressable, Text, Alert, Modal, FlatList, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native'
+import { Icon } from '@rneui/themed';
 import { styles } from './style';
 import { Camera, CameraType } from 'expo-camera';
 
@@ -10,11 +11,21 @@ export default ExamsScreen = (props) => {
     const [exams, setExams] = useState([]);
     const [userSearch, setUserSearch] = useState("")
     const [currentExamUri, setCurrentExamUri] = useState();
+    const [currentExamId, setCurrentExamId] = useState("")
     const [type, setType] = useState(CameraType.back);
     const [isPreview, setIsPreview] = useState(false);
     const [source, setSource] = useState("");
     const [permission, requestPermission] = Camera.useCameraPermissions();
     const cameraRef = useRef();
+
+    const adaptExams = (data) => {
+        return data.map(({ _id, recipename, recipeimgpath, usable }) => ({
+            id: _id,
+            recipename,
+            recipeimgpath,
+            usable
+        }))
+    }
 
     useEffect(() => {
         fetch('https://receitas-node-app-project.onrender.com/api/recipes', {
@@ -22,22 +33,12 @@ export default ExamsScreen = (props) => {
             headers: {
                 'username': props.route.params.name
             },
-        }).then(response => response.json())
-            .then(data => {
-                let examsSize = exams.length
-                if (data.length == examsSize) {
-                    console.info("Already loaded user data!")
-                } else {
-                    for (let i = 0; i < data.length; i++) {
-                        setExams([...exams, { "id": data[i]['_id'], "name": data[i]['recipename'], "pic_ref": data[i]['recipeimgpath'] }])
-                    }
-                }
+        })
+            .then(response => { return response.json() })
+            .then(data => setExams((prevExams) => prevExams.concat(adaptExams(data))))
+            .catch(err => console.log(err))
 
-            })
-            .catch(error => console.error(error));
     }, [])
-
-
 
     const myListEmpty = () => {
         return (
@@ -52,8 +53,8 @@ export default ExamsScreen = (props) => {
     };
 
     const showExam = (item_id) => {
-        index = exams.findIndex(x => x.id === item_id);
-        setCurrentExamUri(exams[index].pic_ref)
+        let index = exams.findIndex(x => x.id === item_id);
+        setCurrentExamUri(exams[index].recipeimgpath)
         setPreviewModalVisible(true)
     }
 
@@ -89,25 +90,98 @@ export default ExamsScreen = (props) => {
         );
     }
 
+    const invalidateRecipe = (id) => {
+        Alert.alert("Invalidar Receita e/ou Exame", "Deseja Realmente invalidar Receita e/ou Exame ?", [
+            {
+                text: 'Cancel',
+                style: 'cancel',
+            },
+            {
+                text: 'OK', onPress: () => {
+                    fetch('https://receitas-node-app-project.onrender.com/api/recipes', {
+                        method: 'PATCH',
+                        headers: {
+                            'id': id,
+                            'usable': false
+                        },
+                    }).then(response => response.json())
+                        .then(data => {
+                            if (data.modifiedCount == 1) {
+                                let index = exams.findIndex(x => x.id === item.id);
+                                Alert.alert("Exame Invalidádo!", exams[index].recipename)
+                            }
+                        })
+                        .catch(error => console.error(error));
+                }
+            },
+        ])
+
+    }
+
     const filterExams = (item) => {
-        if (userSearch === "") {
-            return (
-                <TouchableOpacity onPress={() => {
-                    showExam(item.id)
-                }} style={styles.item}>
-                    <Text style={styles.item}>{item.name}</Text>
-                </TouchableOpacity>
-            )
+        let index = exams.findIndex(x => x.id === item.id);
+        if (exams[index].usable == 'false') {
+            if (userSearch === "") {
+                return (
+                    <TouchableOpacity onPress={() => {
+                        showExam(item.id)
+                    }} style={styles.item}>
+                        <Text style={styles.item}>{item.recipename}</Text>
+                        <Icon
+                            name='heartbeat'
+                            type='font-awesome'
+                        />
+                    </TouchableOpacity>
+                )
+            }
+            if (item.recipename.toLowerCase().includes(userSearch.toLowerCase())) {
+
+                return (
+                    <TouchableOpacity onPress={() => {
+                        showExam(item.id)
+                    }} style={styles.item}>
+                        <Text style={styles.item}>{item.recipename}</Text>
+
+                        <Icon
+                            name='heartbeat'
+                            type='font-awesome'
+                        />
+                    </TouchableOpacity>
+                )
+            }
+        } else {
+            if (userSearch === "") {
+                return (
+                    <TouchableOpacity onPress={() => {
+                        showExam(item.id)
+                    }} style={styles.item}>
+                        <Text style={styles.item}>{item.recipename}</Text>
+                        <Icon
+                            name='heartbeat'
+                            type='font-awesome'
+                            color='#f50'
+                            onPress={() => invalidateRecipe(item.id)} />
+                    </TouchableOpacity>
+                )
+            }
+            if (item.recipename.toLowerCase().includes(userSearch.toLowerCase())) {
+
+                return (
+                    <TouchableOpacity onPress={() => {
+                        showExam(item.id)
+                    }} style={styles.item}>
+                        <Text style={styles.item}>{item.recipename}</Text>
+
+                        <Icon
+                            name='heartbeat'
+                            type='font-awesome'
+                            color='#f50'
+                            onPress={() => invalidateRecipe(item.id)} />
+                    </TouchableOpacity>
+                )
+            }
         }
-        if (item.name.toLowerCase().includes(userSearch.toLowerCase())) {
-            return (
-                <TouchableOpacity onPress={() => {
-                    showExam(item.id)
-                }} style={styles.item}>
-                    <Text style={styles.item}>{item.name}</Text>
-                </TouchableOpacity>
-            )
-        }
+
 
     }
 
@@ -157,7 +231,7 @@ export default ExamsScreen = (props) => {
                                         },
                                     }).then(response => response.json())
                                         .then(data => {
-                                            setExams([...exams, { "id": data.insertedId, "name": examName, "pic_ref": source }])
+                                            setExams([...exams, { "id": data.insertedId, "recipename": examName, "recipeimgpath": source }])
                                             setRegisterModalVisible(!registerModalVisible)
                                         })
                                         .catch(error => console.error(error));

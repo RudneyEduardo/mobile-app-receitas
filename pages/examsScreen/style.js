@@ -75,6 +75,7 @@ export const styles = StyleSheet.create({
     },
     item: {
         flex: 1,
+        flexDirection: 'row',
         padding: 30,
         fontSize: 24,
     },
