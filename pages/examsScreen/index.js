@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect } from 'react'
 import { View, SafeAreaView, Pressable, Text, Alert, Modal, FlatList, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native'
 import { Icon } from '@rneui/themed';
 import { styles } from './style';
-import { Camera, CameraType } from 'expo-camera';
+import { CameraView,  useCameraPermissions } from 'expo-camera';
+import { supabase } from '../utils/supabase'
 
 export default ExamsScreen = (props) => {
+    
     const [registerModalVisible, setRegisterModalVisible] = useState(false);
     const [previewModalVisible, setPreviewModalVisible] = useState(false);
     const [examName, setExamName] = useState("");
@@ -12,10 +14,10 @@ export default ExamsScreen = (props) => {
     const [userSearch, setUserSearch] = useState("")
     const [currentExamUri, setCurrentExamUri] = useState();
     const [currentExamId, setCurrentExamId] = useState("")
-    const [type, setType] = useState(CameraType.back);
+    const [type, setType] = useState("back");
     const [isPreview, setIsPreview] = useState(false);
     const [source, setSource] = useState("");
-    const [permission, requestPermission] = Camera.useCameraPermissions();
+    const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef();
 
     const adaptExams = (data) => {
@@ -72,7 +74,7 @@ export default ExamsScreen = (props) => {
     };
 
     function toggleCameraType() {
-        setType(current => (current === CameraType.back ? CameraType.front : CameraType.back));
+        setType(current => (current === 'back' ? 'front' : 'back'));
     }
 
     if (!permission) {
@@ -203,13 +205,13 @@ export default ExamsScreen = (props) => {
                         <Text style={styles.modalText}>Adicionar Exame e/ou Receituário</Text>
                         <TextInput style={styles.input} placeholder='Adicionar nome do Exame e/ou Receituário' value={examName} onChangeText={setExamName} autoCorrect={false}
                             autoCapitalize='none' />
-                        <Camera ref={cameraRef} style={styles.camera} type={type}>
+                        <CameraView facing={type} ref={cameraRef} style={styles.camera} type={type}>
                             <View style={styles.buttonContainer}>
                                 <TouchableOpacity style={styles.button} onPress={toggleCameraType}>
                                     <Text style={styles.text}>Flip Camera</Text>
                                 </TouchableOpacity>
                             </View>
-                        </Camera>
+                        </CameraView>
                         <Pressable
                             style={[styles.button, styles.buttonClose]}
                             onPress={() => {
@@ -220,13 +222,24 @@ export default ExamsScreen = (props) => {
                         </Pressable>
                         <Pressable
                             style={[styles.button, styles.buttonClose]}
-                            onPress={() => {
+                            onPress={async () => {
                                 if (examName !== "" && isPreview) {
+                                    const response = await fetch(source);
+                                    const blob = await response.blob();
+                                    const arrayBuffer = await new Response(blob).arrayBuffer();
+                                    
+                                    const fileName = `public/${props.route.params.name}/${Date.now()}.jpg`;
+                                    
+                                    const bucket = supabase.storage.from(process.env.BUCKET_NAME)
+                                    const { error } = await bucket.upload( fileName , arrayBuffer )
+                                    if (error) {
+                                        Alert.alert('Error uploading image: ', error);
+                                    }
                                     fetch('https://receitas-node-app-project.onrender.com/api/recipes', {
                                         method: 'POST',
                                         headers: {
                                             'recipename': examName,
-                                            'recipeImgPath': source,
+                                            'recipeImgPath': process.env.process.env.SUPABASE_URL + "storage/v1/object/public/" + process.env.BUCKET_NAME + "/" + fileName ,
                                             'username': props.route.params.name
                                         },
                                     }).then(response => response.json())
@@ -266,7 +279,7 @@ export default ExamsScreen = (props) => {
                 contentContainerStyle={{ justifyContent: 'center' }}
                 ListFooterComponent={() => (
                     <Pressable style={styles.Addbutton} onPress={() => {
-                        Camera.requestCameraPermissionsAsync()
+                        requestPermission()
                         setIsPreview(false)
                         setRegisterModalVisible(true)
                     }}>
